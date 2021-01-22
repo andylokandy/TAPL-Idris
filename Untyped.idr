@@ -38,8 +38,9 @@ rawTokenMap =
       (is '\\', Punct '\\'),
       (is '(', Punct '('),
       (is ')', Punct ')'),
+      (is '.', Punct '.'),
       (oneOf " \t\n\r", White),
-      (some $ non $ oneOf "\\() \t\n\r", Ident)
+      (some $ non $ oneOf "\\(). \t\n\r", Ident)
     ]
 
 lexRaw : String -> List RawToken
@@ -60,14 +61,16 @@ Show RawTerm where
   show (RawApp t1 t2) = "(" ++ show t1 ++ " " ++ show t2 ++ ")"
 
 mutual
+  blockTerm : Grammar RawToken True RawTerm
+  blockTerm = between (match $ Punct '(') (match $ Punct ')') rawTerm
+
   absTerm : Grammar RawToken True RawTerm
   absTerm =
     do
-      match $ Punct '('
       match $ Punct '\\'
       name <- match Ident
+      match $ Punct '.'
       body <- rawTerm
-      match $ Punct ')'
       pure $ RawAbs name body 
       
   varTerm : Grammar RawToken True RawTerm
@@ -79,14 +82,11 @@ mutual
   appTerm : Grammar RawToken True RawTerm
   appTerm =
     do
-      match $ Punct '('
-      t1 <- rawTerm
-      t2 <- rawTerm
-      match $ Punct ')'
-      pure $ RawApp t1 t2
+      termsWithPrf <- some' $ absTerm <|> varTerm <|> blockTerm
+      pure $ List.foldl1 RawApp (fst termsWithPrf) {ok=snd termsWithPrf}
 
   rawTerm : Grammar RawToken True RawTerm
-  rawTerm = absTerm <|> varTerm <|> appTerm
+  rawTerm = absTerm <|> appTerm <|> varTerm <|> blockTerm
 
 data Term =
     Var Nat Nat
@@ -129,37 +129,37 @@ substTerm j t (Var index ctxlen) =
   if index == j
     then t
     else Var index ctxlen
-substTerm j t (Abs name body) = Abs name (substTerm (S j) (shiftTerm Z (plus 1) t) body)
+substTerm j t (Abs name body) = Abs name (substTerm (S j) (shiftTerm 0 (plus 1) t) body)
 substTerm j t (App t1 t2) = App (substTerm j t t1) (substTerm j t t2)
 
-isVal : Term -> Bool
-isVal (Abs _ _) = True
-isVal _ = False
-
 eval1 : Term -> Maybe Term
-eval1 (App (Abs name body) v) =
-  if isVal v 
-    then pure $ shiftTerm 0 (minus 1) (substTerm 0 (shiftTerm 0 (plus 1) v) body)
-    else pure $ App (Abs name body) !(eval1 v)
-eval1 (App t1 t2) =
-  if isVal t1 
-    then pure $ App t1 !(eval1 t2)
-    else pure $ App !(eval1 t1) t2
+eval1 (App (Abs _ body) v@(Abs _ _)) =
+  pure $ shiftTerm 0 (minus 1) (substTerm 0 (shiftTerm 0 (plus 1) v) body)
+eval1 (App t1@(Abs _ _) t2) = pure $ App t1 !(eval1 t2)
+eval1 (App t1 t2) = pure $ App !(eval1 t1) t2
 eval1 _ = Nothing
 
 main : IO ()
 main =
   do
-    let input = "(((((\\xx ((\\x (\\y (\\z (x (y z))))) (\\yy (xx yy)))) (\\x x)) (\\x x)) (\\x x)) (\\x x))"
-    -- let input = "(\\x (x (\\y (x y))))"
+    -- let input = "(\\xx (\\x \\y \\z x (y z)) (\\yy xx yy)) (\\x x) (\\x x) (\\x x) (\\x x)"
+    -- let input = "(\\x. \\y. \\z. x y z) (\\x. x) (\\x. x) (\\x. x)"
+    -- let input = "(\\x. \\x. \\x. x x x)"
+    let input = "(\\b. \\c. b c (\\t. \\f. f)) (\\t. \\f. t) (\\t. \\f. f)"
+
+    -- let input = "(\\x. \\x. \\x. x)"
+    putStrLn $ "input: " ++ input
+
     let tokens = lexRaw input
+    putStrLn $ "tokens: " ++ show tokens
+
     Right (rawTerms, []) <- pure $ parse rawTerm tokens
       | _ => printLn "parse failure"
-    Just terms <- pure $ compile [] rawTerms
-      | _ => printLn "variable not found in context"
-    let evalSteps = List.iterate eval1 terms
-    putStrLn $ "input: " ++ input
-    putStrLn $ "tokens: " ++ show tokens
     putStrLn $ "rawTerms: " ++ show rawTerms
+
+    Just terms <- pure $ compile [] rawTerms
+    | _ => printLn "variable not found in context"
     putStrLn $ "terms: " ++ show terms
+    
+    let evalSteps = List.iterate eval1 terms
     putStrLn $ "evalSteps: " ++ show evalSteps
