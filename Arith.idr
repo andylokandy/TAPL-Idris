@@ -139,11 +139,14 @@ main : IO ()
 main =
   do
     let input = "if isZero pred succ pred succ pred 0 then isZero succ 0 else succ 0"
+    putStrLn $ "input: " ++ show input
+
     let tokens = lexArith input
+    putStrLn $ "tokens: " ++ show tokens
+
     Right (terms, []) <- pure $ parse arithTerm tokens
       | _ => printLn "parse failure"
-    let evalSteps = List.iterate eval1 terms
-    putStrLn $ "input: " ++ show input
-    putStrLn $ "tokens: " ++ show tokens
     putStrLn $ "terms: " ++ show terms
+
+    let evalSteps = List.iterate eval1 terms
     putStrLn $ "evalSteps: " ++ show evalSteps

@@ -158,7 +158,7 @@ main =
     putStrLn $ "rawTerms: " ++ show rawTerms
 
     Just terms <- pure $ compile [] rawTerms
-    | _ => printLn "variable not found in context"
+      | _ => printLn "variable not found in context"
     putStrLn $ "terms: " ++ show terms
     
     let evalSteps = List.iterate eval1 terms
