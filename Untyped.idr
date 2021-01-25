@@ -50,6 +50,7 @@ lexRaw str =
   in
     List.filter (\tok => tok.kind /= White) $ map TokenData.tok tokens
 
+||| Raw AST representation generated directly from the parser
 data RawTerm =
     RawVar String
   | RawAbs String RawTerm
@@ -88,6 +89,7 @@ mutual
   rawTerm : Grammar RawToken True RawTerm
   rawTerm = absTerm <|> appTerm <|> varTerm <|> blockTerm
 
+||| Checked terms that all variable are bound (with de Bruijn index)
 data Term =
     Var Nat Nat
   | Abs String Term
@@ -101,18 +103,18 @@ Show Term where
 Context : Type
 Context = List String
 
-position : String -> Context -> Maybe Nat
-position = position' Z
+findVar : String -> Context -> Maybe Nat
+findVar = findVar' Z
 where
-  position' : Nat -> String -> Context -> Maybe Nat
-  position' index name [] = Nothing
-  position' index name (x::xs) =
+  findVar' : Nat -> String -> Context -> Maybe Nat
+  findVar' index name [] = Nothing
+  findVar' index name (x::xs) =
     if x == name 
       then Just index 
-      else position' (S index) name xs
+      else findVar' (S index) name xs
 
 compile : Context -> RawTerm -> Maybe Term
-compile ctx (RawVar name) = pure $ Var !(position name ctx) (length ctx)
+compile ctx (RawVar name) = pure $ Var !(findVar name ctx) (length ctx)
 compile ctx (RawAbs name body) = pure $ Abs name !(compile (name::ctx) body)
 compile ctx (RawApp t1 t2) = pure $ App !(compile ctx t1) !(compile ctx t2)
 
@@ -132,10 +134,15 @@ substTerm j t (Var index ctxlen) =
 substTerm j t (Abs name body) = Abs name (substTerm (S j) (shiftTerm 0 (plus 1) t) body)
 substTerm j t (App t1 t2) = App (substTerm j t t1) (substTerm j t t2)
 
+isVal : Term -> Bool
+isVal (Abs _ _) = True
+isVal _ = False
+
 eval1 : Term -> Maybe Term
-eval1 (App (Abs _ body) v@(Abs _ _)) =
-  pure $ shiftTerm 0 (minus 1) (substTerm 0 (shiftTerm 0 (plus 1) v) body)
-eval1 (App t1@(Abs _ _) t2) = pure $ App t1 !(eval1 t2)
+eval1 (App t1@(Abs _ body) t2) =
+  if isVal t2
+    then pure $ shiftTerm 0 (minus 1) (substTerm 0 (shiftTerm 0 (plus 1) t2) body)
+    else pure $ App t1 !(eval1 t2)
 eval1 (App t1 t2) = pure $ App !(eval1 t1) t2
 eval1 _ = Nothing
 
@@ -163,3 +170,8 @@ main =
     
     let evalSteps = List.iterate eval1 terms
     putStrLn $ "evalSteps: " ++ show evalSteps
+
+    let result = fromMaybe terms $ List.last' evalSteps
+    if isVal result
+      then putStrLn $ "result: " ++ show result
+      else putStrLn $ "unreachable"
