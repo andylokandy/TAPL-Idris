@@ -30,11 +30,11 @@ result: (λt. (λf. 0))
 ```bash
 > idris2 -p contrib Typed.idr --exec main
 
-input: (\x: bool. if x then (\x: bool -> bool. x true) else (\x: bool -> bool. x false)) false (\x: bool. x)
-tokens: [Punct "(", Punct "\", Ident "x", Punct ":", Ident "bool", Punct ".", Keyword "if", Ident "x", Keyword "then", Punct "(", Punct "\", Ident "x", Punct ":", Ident "bool", Punct "->", Ident "bool", Punct ".", Ident "x", Ident "true", Punct ")", Keyword "else", Punct "(", Punct "\", Ident "x", Punct ":", Ident "bool", Punct "->", Ident "bool", Punct ".", Ident "x", Ident "false", Punct ")", Punct ")", Ident "false", Punct "(", Punct "\", Ident "x", Punct ":", Ident "bool", Punct ".", Ident "x", Punct ")"]
-rawTerms: (((λx: bool. RawIf (x) then ((λx: (bool -> bool). (x RawTrue))) else ((λx: (bool -> bool). (x RawFalse)))) RawFalse) (λx: bool. x))
-terms: (((λx. TmIf (0) then ((λx. (0 TmTrue))) else ((λx. (0 TmFalse)))) TmFalse) (λx. 0))
+input: (\x: (bool -> bool) -> bool. x (\y: bool. if y then false else true)) (\z: bool -> bool. z false)
+tokens: [Punct "(", Punct "\", Ident "x", Punct ":", Punct "(", Ident "bool", Punct "->", Ident "bool", Punct ")", Punct "->", Ident "bool", Punct ".", Ident "x", Punct "(", Punct "\", Ident "y", Punct ":", Ident "bool", Punct ".", Keyword "if", Ident "y", Keyword "then", Ident "false", Keyword "else", Ident "true", Punct ")", Punct ")", Punct "(", Punct "\", Ident "z", Punct ":", Ident "bool", Punct "->", Ident "bool", Punct ".", Ident "z", Ident "false", Punct ")"]
+rawTerms: ((λx: ((bool -> bool) -> bool). (x (λy: bool. RawIf (y) then (RawFalse) else (RawTrue)))) (λz: (bool -> bool). (z RawFalse)))
+terms: ((λx. (TmVar[0] (λy. TmIf (TmVar[0]) then (TmFalse) else (TmTrue)))) (λz. (TmVar[0] TmFalse)))
 type of terms: bool
-evalSteps: [(((λx. TmIf (0) then ((λx. (0 TmTrue))) else ((λx. (0 TmFalse)))) TmFalse) (λx. 0)), (TmIf (TmFalse) then ((λx. (0 TmTrue))) else ((λx. (0 TmFalse))) (λx. 0)), ((λx. (0 TmFalse)) (λx. 0)), ((λx. 0) TmFalse), TmFalse]
-result: TmFalse
+evalSteps: [((λx. (TmVar[0] (λy. TmIf (TmVar[0]) then (TmFalse) else (TmTrue)))) (λz. (TmVar[0] TmFalse))), ((λz. (TmVar[0] TmFalse)) (λy. TmIf (TmVar[0]) then (TmFalse) else (TmTrue))), ((λy. TmIf (TmVar[0]) then (TmFalse) else (TmTrue)) TmFalse), TmIf (TmFalse) then (TmFalse) else (TmTrue), TmTrue]
+result: TmTrue
 ```

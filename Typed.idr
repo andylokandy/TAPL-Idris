@@ -135,20 +135,26 @@ mutual
       termsWithPrf <- some' $ ifTerm <|> constantTerm <|> absTerm <|> varTerm <|> blockTerm
       pure $ List.foldl1 RawApp (fst termsWithPrf) {ok=snd termsWithPrf}
 
-  boolTyTerm : Grammar RawToken True Ty
-  boolTyTerm =
+  constantTyTerm : Grammar RawToken True Ty
+  constantTyTerm =
     do
       ty <- match Ident
       the (Grammar RawToken False Ty) $
         case ty of
           "bool" => pure $ TyBool
           x => fail $ "unrecognised type " ++ x
+  
+  arrowTyTerm : Grammar RawToken True Ty
+  arrowTyTerm =
+    do
+      tysWithPrf <- sepBy1' (match $ Punct "->") (constantTyTerm <|> blockTyTerm)
+      pure $ List.foldl1 TyArrow (fst tysWithPrf) {ok=snd tysWithPrf} 
+  
+  blockTyTerm : Grammar RawToken True Ty
+  blockTyTerm = between (match $ Punct "(") (match $ Punct ")") tyTerm
 
   tyTerm : Grammar RawToken True Ty
-  tyTerm =
-    do
-      tysWithPrf <- sepBy1' (match $ Punct "->") boolTyTerm
-      pure $ List.foldl1 TyArrow (fst tysWithPrf) {ok=snd tysWithPrf} 
+  tyTerm = arrowTyTerm <|> constantTyTerm <|> blockTyTerm
 
   rawTerm : Grammar RawToken True RawTerm
   rawTerm = ifTerm <|> constantTerm <|> absTerm <|> appTerm <|> varTerm <|> blockTerm
@@ -166,7 +172,7 @@ Show Term where
   show TmTrue = "TmTrue"
   show TmFalse = "TmFalse"
   show (TmIf ifCond ifTrue ifFalse) = "TmIf (" ++ show ifCond ++ ") then (" ++ show ifTrue ++ ") else (" ++ show ifFalse ++ ")"
-  show (TmVar index ctxlen) = show index
+  show (TmVar index ctxlen) = "TmVar[" ++ show index ++ "]"
   show (TmAbs name t) = "(λ" ++ name ++ ". " ++ show t ++ ")"
   show (TmApp t1 t2) = "(" ++ show t1 ++ " " ++ show t2 ++ ")"
 
@@ -262,8 +268,8 @@ main : IO ()
 main =
   do
     -- let input = "(\\x: bool. x) true"
-    -- let input = "(\\x: bool. x)"
-    let input = "(\\x: bool. if x then (\\x: bool -> bool. x true) else (\\x: bool -> bool. x false)) false (\\x: bool. x)"
+    let input = "(\\x: (bool -> bool) -> bool. x (\\y: bool. if y then false else true)) (\\z: bool -> bool. z false)"
+    -- let input = "(\\x: bool. if x then (\\x: bool -> bool. x true) else (\\x: bool -> bool. x false)) false (\\x: bool. x)"
     putStrLn $ "input: " ++ input
 
     let tokens = lexRaw input
