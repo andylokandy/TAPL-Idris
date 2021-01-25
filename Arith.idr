@@ -150,3 +150,8 @@ main =
 
     let evalSteps = List.iterate eval1 terms
     putStrLn $ "evalSteps: " ++ show evalSteps
+
+    let result = fromMaybe terms $ List.last' evalSteps
+    if isVal result
+      then putStrLn $ "result: " ++ show result
+      else putStrLn $ "no more rules applies :("

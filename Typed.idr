@@ -179,7 +179,7 @@ where
   findVar' : Nat -> String -> Context -> Either String (Nat, Ty)
   findVar' index targetName [] = Left $ "variable " ++ targetName ++ " not found in context"
   findVar' index targetName ((varName, ty)::xs) =
-    if targetName == varName 
+    if targetName == varName
       then pure $ (index, ty)
       else findVar' (S index) targetName xs
 
@@ -261,14 +261,9 @@ eval1 _ = Nothing
 main : IO ()
 main =
   do
-    -- let input = "(\\xx (\\x \\y \\z x (y z)) (\\yy xx yy)) (\\x x) (\\x x) (\\x x) (\\x x)"
-    -- let input = "(\\x. \\y. \\z. x y z) (\\x. x) (\\x. x) (\\x. x)"
     -- let input = "(\\x: bool. x) true"
     -- let input = "(\\x: bool. x)"
     let input = "(\\x: bool. if x then (\\x: bool -> bool. x true) else (\\x: bool -> bool. x false)) false (\\x: bool. x)"
-    -- let input = "(\\b. \\c. b c (\\t. \\f. f)) (\\t. \\f. t) (\\t. \\f. f)"
-
-    -- let input = "(\\x. \\x. \\x. x)"
     putStrLn $ "input: " ++ input
 
     let tokens = lexRaw input
